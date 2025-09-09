@@ -24,7 +24,7 @@ function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDat
   const roomRepo = ds.getRepository(Room);
   const bookingRepo = ds.getRepository(Booking);
 
-  await bookingRepo.delete({}); await roomRepo.delete({}); await hotelRepo.delete({});
+  await bookingRepo.clear(); await roomRepo.clear(); await hotelRepo.clear();
 
   const hotels = await hotelRepo.save([
     hotelRepo.create({ name: 'KS Biển Xanh', address: '123 Võ Nguyên Giáp' }),
