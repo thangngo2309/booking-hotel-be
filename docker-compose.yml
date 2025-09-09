@@ -1,29 +1,66 @@
+version: "3.9"
+
 services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: ${SA_PASSWORD}
-      MSSQL_PID: "Express"
+      MSSQL_PID: "Express"   # Dev dùng Express là đủ
+    ports:
+      - "1433:1433"          # public dev: mở ra ngoài
     volumes:
       - mssql-data:/var/opt/mssql
-    ports:
-      - "1433:1433" # chỉ mở khi cần; sau có thể bỏ
+    healthcheck:
+      # Kiểm tra SQL đã sẵn sàng bằng sqlcmd (đã có trong image này)
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$SA_PASSWORD\" -C -Q \"SELECT 1\" > /dev/null || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
+  # Job khởi tạo DB nếu chưa có
+  mssql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      mssql:
+        condition: service_healthy
+    entrypoint: ["/bin/sh","-lc"]
+    command:
+      - >
+        /opt/mssql-tools18/bin/sqlcmd -S mssql -U sa -P "$$SA_PASSWORD" -C -Q "
+        IF DB_ID('$$DB_NAME') IS NULL
+        BEGIN
+          PRINT('Creating database: $$DB_NAME');
+          CREATE DATABASE [$$DB_NAME];
+        END"
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    restart: "no"
+
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api
     env_file: .env
     environment:
-      PORT: 3000
+      PORT: ${PORT:-3000}
       DB_HOST: mssql
       DB_PORT: 1433
       DB_USER: sa
-      DB_PASS: ${SA_PASSWORD}
-      DB_NAME: hotel_demo
-    depends_on: [mssql]
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      mssql:
+        condition: service_healthy
+      mssql-init:
+        condition: service_completed_successfully
     ports:
-      - "3000:3000"
+      - "3000:3000"          # public dev: mở ra ngoài
     restart: unless-stopped
 
 volumes:
