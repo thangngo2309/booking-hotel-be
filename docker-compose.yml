@@ -1,0 +1,30 @@
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_PID: "Express"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    ports:
+      - "1433:1433" # chỉ mở khi cần; sau có thể bỏ
+    restart: unless-stopped
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      PORT: 3000
+      DB_HOST: mssql
+      DB_PORT: 1433
+      DB_USER: sa
+      DB_PASS: ${SA_PASSWORD}
+      DB_NAME: hotel_demo
+    depends_on: [mssql]
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  mssql-data:
