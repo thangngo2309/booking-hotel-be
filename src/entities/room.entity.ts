@@ -11,6 +11,9 @@ export class Room {
 
   @Column({ type: 'nvarchar', length: 100 }) name: string;
   @Column({ type: 'int', default: 2 }) capacity: number;
+  @Column({ type: 'nvarchar' }) description: string;
+  @Column({ type: 'int' }) beds: number;
+  @Column({ type: 'int' }) signleBeds: number;
   @Column({ type: 'decimal', precision: 18, scale: 2 }) pricePerNight: number;
 
   @OneToMany(() => Booking, b => b.room) bookings: Booking[];
